@@ -1,0 +1,197 @@
+#include <stdio.h>
+#include <math.h>
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+using namespace std;
+
+struct Pixel {
+  int red;
+  int green;
+  int blue;
+  //constructors declared here?
+  Pixel (int reds, int greens, int blues) {
+    red = reds;
+    green = greens;
+    blue = blues;
+
+  }
+  Pixel() {
+    Pixel (0,0,0);
+  }
+
+};
+
+class Picture
+{
+private:
+  vector<vector<Pixel> > picture_data;
+public:
+  bool read_file(ifstream &fin);
+  bool output(ofstream &fout);
+  void flipY();
+  void flipX();
+  void invert();
+
+};
+
+bool Picture::read_file(ifstream &fin) {
+  string line;
+  bool out = true;
+
+  int width, height, intensity, r, g, b;
+
+  getline(fin, line);
+ 
+  out = (line == "P3");
+  out = (fin >> width >> height >> intensity);
+
+  for(int j = 0; j< height; j++){
+    vector<Pixel> row;
+    for(int i=0; i< width; i++){
+      out = (fin >> r >> g >> b);
+      Pixel P(r, g, b);
+      row.push_back(P);
+    }
+    
+    picture_data.push_back(row);
+  }
+ 
+  return out;
+}
+
+bool Picture::output(ofstream &fout){
+  int columns = picture_data[0].size();
+  int rows = picture_data.size();
+  int intensity = 0;
+
+  if (rows == 0)
+    return false;
+
+  // Find maximum intensity and put it in the intensity variable
+  for(int j = 0; j< rows; j++)
+    for(int i=0; i< columns; i++) {
+      if (picture_data[j][i].red > intensity)
+    intensity = picture_data[j][i].red;
+      if (picture_data[j][i].green > intensity)
+    intensity = picture_data[j][i].green;
+      if (picture_data[j][i].blue > intensity)
+    intensity = picture_data[j][i].blue;
+    }
+
+  fout << "P3" << endl << columns << " " << rows << endl << intensity << endl;
+  for(int j = 0; j< rows; j++){
+    for(int i=0; i< columns; i++){
+      Pixel p = picture_data[j][i];
+      fout << p.red << " " << p.green << " " << p.blue << " ";
+    }
+    fout << endl;
+  }
+
+  return true;
+}
+
+
+void Picture::invert() {
+  int columns = picture_data[0].size();
+  int rows = picture_data.size();
+  int intensity = 0;
+  for(int j = 0; j< rows; j++)
+    for(int i=0; i< columns; i++) {
+      if (picture_data[j][i].red > intensity)
+    intensity = picture_data[j][i].red;
+      if (picture_data[j][i].green > intensity)
+    intensity = picture_data[j][i].green;
+      if (picture_data[j][i].blue > intensity)
+    intensity = picture_data[j][i].blue;
+    }
+ 
+  for(int j = 0; j< rows; j++)
+    for(int i=0; i< columns; i++) {
+      picture_data[j][i].red = intensity -  picture_data[j][i].red;
+      picture_data[j][i].green = intensity -  picture_data[j][i].green;
+      picture_data[j][i].blue = intensity -  picture_data[j][i].blue;
+    }
+}
+
+void Picture::flipY() {
+  int rows = picture_data.size();
+  int columns = picture_data[0].size();
+   for (int j = 0; j < rows; j++) {
+     for (int i = 0; i < (columns / 2); i++) {
+       Pixel temporary = picture_data[j][i];
+       picture_data[j][i] = picture_data[j][columns - 1 - i];
+       picture_data[j][columns - 1 - i] = temporary;
+     }
+   }
+ 
+}
+
+void Picture::flipX() {
+  int rows = picture_data.size();
+  int columns = picture_data[0].size();
+
+  for (int i = 0; i < columns; i++) {
+    for (int j = 0; j < rows/2; j++) {
+      Pixel temporary = picture_data[j][i];
+      picture_data[j][i] = picture_data[rows-j-1][i];
+      picture_data[rows-j-1][i] = temporary;
+    }
+  }
+}
+
+int main(int argc, char* argv[]) {
+  string inputFilename, outputFilename;
+  char optionalModificationCode;
+
+  ifstream fin;
+
+  Pixel p (3,5,6);
+  Pixel p2;
+
+  Picture pic;
+
+  if (argc < 3 or argc > 4 ){
+    cout << "Usage: inputfile outputfile [XYI]" << endl;
+    return 0;
+  }
+
+  inputFilename  = argv[1];
+  outputFilename = argv[2];
+ 
+  cout << " inputFilename  = " << inputFilename  << endl;
+  cout << " outputFilename = " << outputFilename << endl;
+
+  fin.open(inputFilename);
+  if (!fin.is_open () or !pic.read_file(fin)){
+    cout << "Error: unable to read PPM file " << inputFilename << endl;
+    return 0;
+  }
+
+  if (argc == 4){
+    string transf(argv[3]);
+    if (!transf.compare("Y")){
+      pic.flipY();
+    }
+
+    if (!transf.compare("X")){
+      pic.flipX();
+    }
+
+    if (!transf.compare("I")){
+      pic.invert();
+    }
+  }
+ 
+  ofstream resultf;
+  resultf.open (outputFilename);
+  if (!resultf.is_open()) {
+    cout << "Error: unable to write PPM file given output file";
+  }
+  pic.output(resultf);
+  resultf.close();
+
+  return 1;
+}
